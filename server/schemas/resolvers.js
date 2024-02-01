@@ -1,54 +1,60 @@
 const { User } = require("../models");
-const { signToken } = require('../utils/auth')
+const { signToken, AuthenticationError } = require('../utils/auth')
+
 
 const resolvers = {
     Query: {
-        singleUser: async (parent, {userId}) => {
-            return User.findOne({ _id: userId })
+        me: async (parent, args, context) => {
+            if (context.user) {
+
+                return User.findOne({ _id: context.user._id })
+            }
+            return AuthenticationError
         }
     },
 
     Mutation: {
-        createUser: async (parent, { username, email, password }) => {
-            const newUser = User.create({ username, email, password})
-            const token = signToken(newUser)
-
-            return {token, newUser};
+        addUser: async (parent, args) => {
+            const user = await User.create(args)
+            const token = signToken(user)
+            return { token, user };
         },
-        login: async (parent, { username, email, password }) => {
-            const user = User.findOne({email})
+        login: async (parent, { email, password }) => {
+            const user = User.findOne({ email })
 
-            if(!user) {
-
+            if (!user) {
+                return AuthenticationError
             }
 
             const correctPw = User.isCorrectPassword(password)
 
-            if(!correctPw) {
-                
+            if (!correctPw) {
+                return AuthenticationError
             }
 
             const token = signToken(user)
 
             return { token, user };
         },
-        saveBook: async (parents, { newBook }, context) => {
+        saveBook: async (parents, { bookInput }, context) => {
             if (context.user) {
                 return User.findOneAndUpdate(
-                  { _id: userId },
-                  { $addToSet: { savedBooks: newBook } },
-                  { new: true, runValidators: true }
+                    { _id: context.user._id },
+                    { $addToSet: { savedBooks:  bookInput  } },
+                    { new: true, runValidators: true }
                 );
-              }
+            }
         },
-        deleteBook: async (parent, { bookId }, context) => {
-            if(context.user) {
+        removeBook: async (parent, { bookId }, context) => {
+            if (context.user) {
                 return User.findOneAndUpdate(
-                    { _id: userId },
+                    { _id: context.user._id },
                     { $pull: { savedBooks: { bookId: bookId } } },
-                    { new: true}
+                    { new: true }
                 )
             }
         }
     }
 }
+
+module.exports = resolvers
