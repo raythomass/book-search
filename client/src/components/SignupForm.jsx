@@ -33,11 +33,7 @@ const SignupForm = () => {
     }
 
     try {
-      const response = await addUser({
-        variables: {
-          name
-        }
-      })
+      const response = await addUser()
 
       if (!response.ok) {
         throw new Error('something went wrong!');
